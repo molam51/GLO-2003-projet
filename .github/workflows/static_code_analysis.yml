@@ -1,0 +1,54 @@
+name: Static Code Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    continue-on-error: false
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.7.0
+        with:
+          mongodb-version: '5.0'
+
+      - name: Build
+        run: mvn -B package --file pom.xml
+        
+      - name: Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'Floppa'
+          path: '.'
+          format: 'HTML'
+      
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@master
+        with:
+           name: Dependency Check Report
+           path: ${{github.workspace}}/reports
+      
+      - name: Upload Code Coverage Report
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./target/site/jacoco/jacoco.xml
+          fail-ci-if-error: true
+          
+      - name: Execute Code Quality Analysis
+        uses: DesigniteTools/DJAction@v1.0.0
+        with:
+          PAT: ${{ secrets.PAT }}
+          QSCORED_API_KEY: ${{ secrets.QSCORED_API_KEY }}
+          EMAIL: 'anthony.blanchette.potvin@gmail.com'
+          PRJ_NAME: 'Floppa'
+          OPEN_SOURCE: true
+  

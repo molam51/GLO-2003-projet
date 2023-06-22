@@ -1,0 +1,56 @@
+name: Manual Production Deployment on Heroku
+
+on:
+  workflow_dispatch:
+    inputs:
+      checkout-ref:
+        description: 'Branch, commit (SHA) or tag to checkout'
+        default: 'main'
+        required: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    continue-on-error: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.checkout-ref }}
+
+      - name: Setup JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.7.0
+        with:
+          mongodb-version: '5.0'
+
+      - name: Verify
+        run: mvn verify
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 3
+    continue-on-error: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.checkout-ref }}
+      
+      - uses: akhileshns/heroku-deploy@v3.12.12
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: "production-floppa-app"
+          heroku_email: "anthony.blanchette.potvin@gmail.com"
+          healthcheck: "https://production-floppa-app.herokuapp.com/health"
+          rollbackonhealthcheckfailed: true

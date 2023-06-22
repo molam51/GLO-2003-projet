@@ -1,0 +1,63 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  check-commit-message:
+  
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    continue-on-error: false
+    
+    steps:
+      - name: Check Commit Type
+        uses: gsactions/commit-message-checker@v1
+        with:
+          pattern: '^(feat|refactor|misc|doc|test): \w.+$'
+          excludeTitle: 'true'
+          excludeDescription: 'true'
+          error: 'Your first commit line must have the following format: "type: message", where "type" must match one of those values: feat, refactor, misc, doc, test.'
+
+  build:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    continue-on-error: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.7.0
+        with:
+          mongodb-version: '5.0'
+
+      - name: Validate
+        run: mvn validate
+
+      - name: Compile
+        run: mvn compile
+
+      - name: Test
+        run: mvn test
+
+      - name: Build
+        run: mvn -B package --file pom.xml
+
+      - name: Verify
+        run: mvn verify
